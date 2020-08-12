@@ -58,6 +58,8 @@ public abstract class ExpoUpdatesAppLoader {
   private SelectionPolicy mSelectionPolicy;
   private Launcher mLauncher;
 
+  public static final String UPDATES_EVENT_NAME = "Expo.nativeUpdatesEvent";
+
   public ExpoUpdatesAppLoader(String manifestUrl) {
     this(manifestUrl, false);
   }
@@ -200,10 +202,12 @@ public abstract class ExpoUpdatesAppLoader {
         try {
           JSONObject jsonParams = new JSONObject();
           jsonParams.put("type", eventName);
-          Iterator<Map.Entry<String, Object>> iterator = params.getEntryIterator();
-          while (iterator.hasNext()) {
-            Map.Entry<String, Object> entry = iterator.next();
-            jsonParams.put(entry.getKey(), entry.getValue());
+          if (params != null) {
+            Iterator<Map.Entry<String, Object>> iterator = params.getEntryIterator();
+            while (iterator.hasNext()) {
+              Map.Entry<String, Object> entry = iterator.next();
+              jsonParams.put(entry.getKey(), entry.getValue());
+            }
           }
           emitEvent(jsonParams);
         } catch (Exception e) {
