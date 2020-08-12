@@ -19,6 +19,7 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
+import androidx.annotation.Nullable;
 import expo.modules.updates.UpdatesConfiguration;
 import expo.modules.updates.UpdatesUtils;
 import expo.modules.updates.db.DatabaseHolder;
@@ -59,6 +60,9 @@ public abstract class ExpoUpdatesAppLoader {
   private Launcher mLauncher;
 
   public static final String UPDATES_EVENT_NAME = "Expo.nativeUpdatesEvent";
+  private static final String UPDATE_AVAILABLE_EVENT = "updateAvailable";
+  private static final String UPDATE_NO_UPDATE_AVAILABLE_EVENT = "noUpdateAvailable";
+  private static final String UPDATE_ERROR_EVENT = "error";
 
   public ExpoUpdatesAppLoader(String manifestUrl) {
     this(manifestUrl, false);
@@ -198,16 +202,23 @@ public abstract class ExpoUpdatesAppLoader {
       }
 
       @Override
-      public void onEvent(String eventName, WritableMap params) {
+      public void onBackgroundUpdateFinished(LoaderTask.BackgroundUpdateStatus status, @Nullable UpdateEntity update, @Nullable Exception exception) {
         try {
           JSONObject jsonParams = new JSONObject();
-          jsonParams.put("type", eventName);
-          if (params != null) {
-            Iterator<Map.Entry<String, Object>> iterator = params.getEntryIterator();
-            while (iterator.hasNext()) {
-              Map.Entry<String, Object> entry = iterator.next();
-              jsonParams.put(entry.getKey(), entry.getValue());
+          if (status == LoaderTask.BackgroundUpdateStatus.ERROR) {
+            if (exception == null) {
+              throw new AssertionError("Background update with error status must have a nonnull exception object");
             }
+            jsonParams.put("type", UPDATE_ERROR_EVENT);
+            jsonParams.put("message", exception.getMessage());
+          } else if (status == LoaderTask.BackgroundUpdateStatus.UPDATE_AVAILABLE) {
+            if (update == null) {
+              throw new AssertionError("Background update with error status must have a nonnull update object");
+            }
+            jsonParams.put("type", UPDATE_AVAILABLE_EVENT);
+            jsonParams.put("manifestString", update.metadata.toString());
+          } else if (status == LoaderTask.BackgroundUpdateStatus.NO_UPDATE_AVAILABLE) {
+            jsonParams.put("type", UPDATE_NO_UPDATE_AVAILABLE_EVENT);
           }
           emitEvent(jsonParams);
         } catch (Exception e) {
